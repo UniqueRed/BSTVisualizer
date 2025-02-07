@@ -359,7 +359,6 @@ export default function BSTVisualizer() {
                     Traversal Result:
                     <br />[{traversalResult.join(", ")}]
                   </AlertDescription>
-                  {/* Fix: Moved buttons to the top-right corner with padding */}
                   <div className="absolute top-2 right-2 flex justify-end items-center space-x-2">
                     <Button
                       size="icon"

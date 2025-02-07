@@ -23,7 +23,6 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
   const viewHeight = 450;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // State for panning and zooming
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
