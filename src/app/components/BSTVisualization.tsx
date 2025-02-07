@@ -1,8 +1,6 @@
-"use client";
-
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import type { BSTNode } from "@/app/lib/bst";
-import { motion } from "framer-motion";
+import { BST, BSTNode } from "@/app/lib/bst";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 interface BSTVisualizationProps {
@@ -10,6 +8,13 @@ interface BSTVisualizationProps {
   width: number;
   highlightedNodes?: number[];
   currentStep?: VisualizationStep;
+  tempTree?: BSTNode | null; // Add this to handle intermediate states
+}
+
+interface NodePosition {
+  x: number;
+  y: number;
+  node: BSTNode;
 }
 
 interface VisualizationStep {
@@ -26,65 +31,231 @@ interface VisualizationStep {
   compareResult?: "left" | "right" | "equal";
   highlightedNodes?: number[];
   path?: number[];
+  tempTree?: BSTNode | null;
 }
 
-interface NodePosition {
-  x: number;
-  y: number;
-  node: BSTNode;
-}
+const createTempTree = (
+  tree: BST,
+  options: {
+    detachedNode?: number;
+    rotated?: boolean;
+    parent?: number;
+    child?: number;
+  }
+): BSTNode | null => {
+  // Create a deep copy of the tree
+  const tempTree = new BST(JSON.parse(JSON.stringify(tree.root)));
+
+  if (options.detachedNode && options.parent && options.child) {
+    const parentNode = tempTree.find(tempTree.root, options.parent);
+    const childNode = tempTree.find(tempTree.root, options.child);
+
+    if (!parentNode || !childNode) return tempTree.root;
+
+    // Determine if it's a left or right rotation
+    const isRightRotation = parentNode.right?.value === options.child;
+    const detachedNode = isRightRotation ? childNode.left : childNode.right;
+
+    if (detachedNode?.value === options.detachedNode) {
+      // Detach the node by setting the appropriate pointer to null
+      if (isRightRotation) {
+        childNode.left = null;
+      } else {
+        childNode.right = null;
+      }
+    }
+  }
+
+  if (options.rotated && options.parent && options.child) {
+    const parentNode = tempTree.find(tempTree.root, options.parent);
+    const childNode = tempTree.find(tempTree.root, options.child);
+
+    if (!parentNode || !childNode) return tempTree.root;
+
+    // Find the parent's parent (grandparent)
+    const grandparent = tempTree.findParent(tempTree.root, options.parent);
+    const parentOfParent =
+      grandparent?.left?.value === options.parent ? "left" : "right";
+
+    // Determine rotation type and perform rotation
+    const isRightRotation = parentNode.right?.value === options.child;
+
+    if (isRightRotation) {
+      // Right rotation
+      const childLeft = childNode.left;
+      childNode.left = parentNode;
+      parentNode.right = childLeft;
+    } else {
+      // Left rotation
+      const childRight = childNode.right;
+      childNode.right = parentNode;
+      parentNode.left = childRight;
+    }
+
+    // Update the grandparent's pointer
+    if (grandparent) {
+      if (parentOfParent === "left") {
+        grandparent.left = childNode;
+      } else {
+        grandparent.right = childNode;
+      }
+    } else {
+      // Parent was the root
+      tempTree.root = childNode;
+    }
+  }
+
+  return tempTree.root;
+};
+
+const generateRotateSteps = (
+  parent: number,
+  child: number,
+  tree: BST
+): VisualizationStep[] => {
+  const steps: VisualizationStep[] = [];
+
+  // Find the nodes
+  const parentNode = tree.find(tree.root, parent);
+  const childNode = tree.find(tree.root, child);
+
+  if (!parentNode || !childNode) {
+    steps.push({
+      type: "complete",
+      currentNode: parent,
+      description: "Invalid rotation: nodes not found",
+      highlightedNodes: [],
+      path: [],
+    });
+    return steps;
+  }
+
+  // Determine if it's a valid rotation
+  if (parentNode.left?.value !== child && parentNode.right?.value !== child) {
+    steps.push({
+      type: "complete",
+      currentNode: parent,
+      description: "Invalid rotation: nodes must be directly connected",
+      highlightedNodes: [],
+      path: [],
+    });
+    return steps;
+  }
+
+  const isRightRotation = parentNode.right?.value === child;
+  const affectedGrandchild = isRightRotation ? childNode.left : childNode.right;
+
+  // Step 1: Initial state
+  steps.push({
+    type: "rotation",
+    currentNode: parent,
+    targetValue: child,
+    description: `Starting rotation between ${parent} and ${child}`,
+    highlightedNodes: [parent, child],
+    path: [parent, child],
+    tempTree: tree.root,
+  });
+
+  // Step 2: Highlight affected subtree
+  steps.push({
+    type: "rotation",
+    currentNode: child,
+    targetValue: parent,
+    description: `Identifying affected nodes in the ${
+      isRightRotation ? "right" : "left"
+    } rotation`,
+    highlightedNodes: [
+      parent,
+      child,
+      ...(affectedGrandchild ? [affectedGrandchild.value] : []),
+    ],
+    path: [parent, child],
+    tempTree: tree.root,
+  });
+
+  // Step 3: Detach affected grandchild if it exists
+  if (affectedGrandchild) {
+    steps.push({
+      type: "rotation",
+      currentNode: child,
+      targetValue: parent,
+      description: `Detaching ${affectedGrandchild.value} from ${child} temporarily`,
+      highlightedNodes: [parent, child, affectedGrandchild.value],
+      path: [parent, child, affectedGrandchild.value],
+      tempTree: createTempTree(tree, {
+        detachedNode: affectedGrandchild.value,
+        parent,
+        child,
+      }),
+    });
+  }
+
+  // Step 4: Perform rotation
+  steps.push({
+    type: "rotation",
+    currentNode: child,
+    targetValue: parent,
+    description: `Rotating ${child} to become parent of ${parent}`,
+    highlightedNodes: [parent, child],
+    path: [child, parent],
+    tempTree: createTempTree(tree, {
+      rotated: true,
+      parent,
+      child,
+    }),
+  });
+
+  // Step 5: Reattach grandchild if it exists
+  if (affectedGrandchild) {
+    const finalTree = new BST(JSON.parse(JSON.stringify(tree.root)));
+    finalTree.rotate(parent, child);
+    steps.push({
+      type: "rotation",
+      currentNode: child,
+      targetValue: parent,
+      description: `Reattaching ${affectedGrandchild.value} to its new parent`,
+      highlightedNodes: [parent, child, affectedGrandchild.value],
+      path: [child, parent, affectedGrandchild.value],
+      tempTree: finalTree.root,
+    });
+  }
+
+  // Step 6: Final state
+  const finalTree = new BST(JSON.parse(JSON.stringify(tree.root)));
+  finalTree.rotate(parent, child);
+  steps.push({
+    type: "complete",
+    currentNode: child,
+    description: "Rotation complete",
+    highlightedNodes: [parent, child],
+    path: [child, parent],
+    tempTree: finalTree.root,
+  });
+
+  return steps;
+};
 
 const BSTVisualization: React.FC<BSTVisualizationProps> = ({
   root,
   width,
   highlightedNodes = [],
   currentStep,
+  tempTree,
 }) => {
   const nodeRadius = 20;
   const verticalSpacing = 60;
   const horizontalSpacing = 40;
   const viewHeight = 400;
   const containerRef = useRef<HTMLDivElement>(null);
+  const [prevPositions, setPrevPositions] = useState<{
+    [key: number]: { x: number; y: number };
+  }>({});
 
   // State for panning and zooming
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const lastMousePosition = useRef({ x: 0, y: 0 });
-
-  const handleWheel = (e: WheelEvent) => {
-    if (containerRef.current?.contains(e.target as Node)) {
-      e.preventDefault();
-      const zoomChange = e.deltaY * -0.001;
-      setZoom((prev) => {
-        const newZoom = prev + zoomChange;
-        if (newZoom <= 0.2) return 0.2;
-        return newZoom > 2 ? 2 : newZoom;
-      });
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      window.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    lastMousePosition.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - lastMousePosition.current.x;
-    const dy = e.clientY - lastMousePosition.current.y;
-    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
-    lastMousePosition.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
 
   const calculateTreeDimensions = (
     node: BSTNode | null
@@ -124,27 +295,106 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
     ];
   };
 
-  const { width: treeWidth, height } = useMemo(
+  const { width: treeWidth } = useMemo(
     () => calculateTreeDimensions(root),
     [root]
   );
-  const nodePositions = useMemo(
-    () => positionNodes(root, width / 2, nodeRadius, treeWidth),
-    [root, width, treeWidth]
-  );
+  const nodePositions = useMemo(() => {
+    // Use tempTree if available (for intermediate rotation steps), otherwise use root
+    const treeToUse = tempTree || root;
+    const positions = positionNodes(
+      treeToUse,
+      width / 2,
+      nodeRadius,
+      treeWidth
+    );
 
-  useEffect(() => {
-    if (nodePositions.length > 0) {
-      handleRecenter();
+    // Store current positions for animation
+    const newPositions: { [key: number]: { x: number; y: number } } = {};
+    positions.forEach((pos) => {
+      newPositions[pos.node.value] = { x: pos.x, y: pos.y };
+    });
+
+    // Handle animation from previous positions
+    if (currentStep?.type === "rotation") {
+      positions.forEach((pos) => {
+        if (prevPositions[pos.node.value]) {
+          pos.x = prevPositions[pos.node.value].x;
+          pos.y = prevPositions[pos.node.value].y;
+        }
+      });
     }
+
+    setPrevPositions(newPositions);
+    return positions;
+  }, [root, tempTree, width, treeWidth, currentStep]);
+
+  // Calculate edges with animations
+  const edges = useMemo(() => {
+    const result = [];
+    for (const position of nodePositions) {
+      if (position.node.left) {
+        const childPos = nodePositions.find(
+          (p) => p.node === position.node.left
+        );
+        if (childPos) {
+          result.push({
+            id: `${position.node.value}-${childPos.node.value}`,
+            parent: position,
+            child: childPos,
+          });
+        }
+      }
+      if (position.node.right) {
+        const childPos = nodePositions.find(
+          (p) => p.node === position.node.right
+        );
+        if (childPos) {
+          result.push({
+            id: `${position.node.value}-${childPos.node.value}`,
+            parent: position,
+            child: childPos,
+          });
+        }
+      }
+    }
+    return result;
   }, [nodePositions]);
 
-  const handleRecenter = () => {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
+  // Pan and zoom handlers
+  const handleWheel = (e: WheelEvent) => {
+    if (containerRef.current?.contains(e.target as Node)) {
+      e.preventDefault();
+      const zoomChange = e.deltaY * -0.001;
+      setZoom((prev) => Math.min(Math.max(0.2, prev + zoomChange), 2));
+    }
+  };
 
+  useEffect(() => {
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    lastMousePosition.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMousePosition.current.x;
+    const dy = e.clientY - lastMousePosition.current.y;
+    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+    lastMousePosition.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleRecenter = () => {
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     nodePositions.forEach((pos) => {
       minX = Math.min(minX, pos.x - nodeRadius);
       maxX = Math.max(maxX, pos.x + nodeRadius);
@@ -155,39 +405,17 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
     const padding = 40;
     const treeBoundsWidth = maxX - minX + 2 * padding;
     const treeBoundsHeight = maxY - minY + 2 * padding;
-
     const horizontalZoom = width / treeBoundsWidth;
     const verticalZoom = viewHeight / treeBoundsHeight;
     const newZoom = Math.min(horizontalZoom, verticalZoom, 1);
 
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-
-    const newPanX = width / 2 - centerX * newZoom;
-    const newPanY = viewHeight / 2 - centerY * newZoom;
-
+    setPan({
+      x: width / 2 - centerX * newZoom,
+      y: viewHeight / 2 - centerY * newZoom,
+    });
     setZoom(newZoom);
-    setPan({ x: newPanX, y: newPanY });
-  };
-
-  const svgWidth = width;
-  const svgHeight = viewHeight;
-
-  const renderEdge = (start: NodePosition, end: NodePosition | undefined) => {
-    if (!end) return null;
-    return (
-      <motion.line
-        key={`${start.node.value}-${end.node.value}`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        x1={start.x}
-        y1={start.y}
-        x2={end.x}
-        y2={end.y}
-        stroke="black"
-      />
-    );
   };
 
   return (
@@ -201,57 +429,86 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
       style={{ cursor: isDragging ? "grabbing" : "grab" }}
     >
       <svg
-        width={svgWidth}
-        height={svgHeight}
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        width={width}
+        height={viewHeight}
+        viewBox={`0 0 ${width} ${viewHeight}`}
       >
-        <g
-          transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-          style={{ cursor: isDragging ? "grabbing" : "grab" }}
-        >
+        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          {/* Render edges with animations */}
+          {edges.map(({ id, parent, child }) => (
+            <motion.line
+              key={id}
+              initial={{
+                x1: prevPositions[parent.node.value]?.x || parent.x,
+                y1: prevPositions[parent.node.value]?.y || parent.y,
+                x2: prevPositions[child.node.value]?.x || child.x,
+                y2: prevPositions[child.node.value]?.y || child.y,
+              }}
+              animate={{
+                x1: parent.x,
+                y1: parent.y,
+                x2: child.x,
+                y2: child.y,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 20,
+                duration: 0.5,
+              }}
+              stroke="black"
+            />
+          ))}
+
+          {/* Render nodes */}
           {nodePositions.map((position) => (
-            <React.Fragment key={position.node.value}>
-              {renderEdge(
-                position,
-                nodePositions.find((pos) => pos.node === position.node.left)
-              )}
-              {renderEdge(
-                position,
-                nodePositions.find((pos) => pos.node === position.node.right)
-              )}
-              <motion.circle
-                initial={{ scale: 0 }}
-                animate={{
-                  scale: 1,
-                  fill: highlightedNodes.includes(position.node.value)
-                    ? "#e3f2fd"
-                    : "white",
-                  stroke: highlightedNodes.includes(position.node.value)
-                    ? "#2196f3"
-                    : "black",
-                  strokeWidth: highlightedNodes.includes(position.node.value)
-                    ? 2
-                    : 1,
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                cx={position.x}
-                cy={position.y}
+            <motion.g
+              key={position.node.value}
+              initial={
+                prevPositions[position.node.value]
+                  ? {
+                      x: prevPositions[position.node.value].x,
+                      y: prevPositions[position.node.value].y,
+                    }
+                  : { scale: 0 }
+              }
+              animate={{
+                x: position.x,
+                y: position.y,
+                scale: 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 20,
+                duration: 0.5,
+              }}
+            >
+              <circle
                 r={nodeRadius}
+                fill={
+                  highlightedNodes.includes(position.node.value)
+                    ? "#e3f2fd"
+                    : "white"
+                }
+                stroke={
+                  highlightedNodes.includes(position.node.value)
+                    ? "#2196f3"
+                    : "black"
+                }
+                strokeWidth={
+                  highlightedNodes.includes(position.node.value) ? 2 : 1
+                }
               />
-              <motion.text
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                x={position.x}
-                y={position.y}
+              <text
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={nodeRadius}
                 className="select-none"
               >
                 {position.node.value}
-              </motion.text>
-            </React.Fragment>
+              </text>
+            </motion.g>
           ))}
         </g>
       </svg>

@@ -85,6 +85,14 @@ export class BST {
     }
   }
 
+  find(root: BSTNode | null, value: number): BSTNode | null {
+    return this._findNode(this.root, value);
+  }
+
+  findParent(root: BSTNode | null, value: number): BSTNode | null {
+    return this._findParent(this.root, value);
+  }
+
   private _findNode(node: BSTNode | null, value: number): BSTNode | null {
     if (node === null || node.value === value) return node;
     if (value < node.value) return this._findNode(node.left, value);
