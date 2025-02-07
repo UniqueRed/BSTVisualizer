@@ -11,7 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Trash2, Copy, Check } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Copy,
+  Check,
+  XIcon,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Accordion,
@@ -22,6 +29,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import BSTVisualization from "./BSTVisualization";
 import { BST } from "@/app/lib/bst";
+import { motion, AnimatePresence } from "framer-motion";
 
 type BSTAction =
   | { type: "INSERT"; value: number }
@@ -118,6 +126,7 @@ export default function BSTVisualizer() {
   const [rotateChild, setRotateChild] = useState("");
   const [selectedTraversal, setSelectedTraversal] = useState("");
   const [traversalResult, setTraversalResult] = useState<number[]>([]);
+  const [showTraversal, setShowTraversal] = useState(false);
   const [copying, setCopying] = useState(false);
   const [autoSaveIterations, setAutoSaveIterations] = useState(false);
 
@@ -173,6 +182,11 @@ export default function BSTVisualizer() {
         break;
     }
     setTraversalResult(result);
+    setShowTraversal(true);
+  };
+
+  const handleCloseTraversal = () => {
+    setShowTraversal(false);
   };
 
   const handleCopyResult = async () => {
@@ -252,7 +266,7 @@ export default function BSTVisualizer() {
   ]);
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 h-full">
+    <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 h-full rounded-lg">
       <div className="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md space-y-6">
         <h2 className="text-xl font-semibold text-gray-700">BST Controls</h2>
 
@@ -332,26 +346,44 @@ export default function BSTVisualizer() {
             </div>
           </div>
 
-          {traversalResult.length > 0 && (
-            <Alert className="relative">
-              <AlertDescription className="pr-12">
-                Traversal Result:
-                <br />[{traversalResult.join(", ")}]
-              </AlertDescription>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute right-4 top-1/2 -translate-y-1/2"
-                onClick={handleCopyResult}
+          <AnimatePresence>
+            {showTraversal && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.3 }}
               >
-                {copying ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </Alert>
-          )}
+                <Alert className="relative">
+                  <AlertDescription className="pr-16">
+                    Traversal Result:
+                    <br />[{traversalResult.join(", ")}]
+                  </AlertDescription>
+                  {/* Fix: Moved buttons to the top-right corner with padding */}
+                  <div className="absolute top-2 right-2 flex justify-end items-center space-x-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleCopyResult}
+                    >
+                      {copying ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleCloseTraversal}
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <Accordion type="single" collapsible>
             <AccordionItem value="advanced">

@@ -163,6 +163,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
         x2={end.x}
         y2={end.y}
         stroke="black"
+        strokeWidth={2}
       />
     );
   };
@@ -205,6 +206,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
                 r={nodeRadius}
                 fill="white"
                 stroke="black"
+                strokeWidth={2}
               />
               <motion.text
                 initial={{ opacity: 0 }}
