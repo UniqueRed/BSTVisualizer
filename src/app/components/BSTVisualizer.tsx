@@ -368,27 +368,27 @@ export default function BSTVisualizer() {
                         setAutoSaveIterations(checked === true)
                       }
                     />
-                    <Label htmlFor="autoSave">Auto-save after operations</Label>
+                    <Label htmlFor="autoSave">Autosave Iterations</Label>
                   </div>
-                  <Button
-                    onClick={handleClearAllIterations}
-                    variant="destructive"
-                    className="w-full outline-none"
-                  >
-                    Clear All Iterations
-                  </Button>
                 </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
 
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-1">
             <Button
               onClick={handleClear}
               variant="destructive"
               className="outline-none"
             >
               Clear
+            </Button>
+            <Button
+              onClick={handleClearAllIterations}
+              variant="destructive"
+              className="outline-none"
+            >
+              Clear Iterations
             </Button>
             <Button onClick={handleSaveIteration}>Save Iteration</Button>
           </div>
