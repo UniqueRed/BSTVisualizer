@@ -4,12 +4,12 @@ This BST Visualizer is an interactive tool for visualizing binary search tree op
 
 ## ✨ Features
 
-✅ Insert Nodes – Add new nodes to the BST dynamically.
-✅ Delete Nodes – Remove nodes while maintaining BST properties.
-✅ Rotate Nodes – Perform left and right rotations.
-✅ Tree Traversals – Visualize Inorder, Preorder, and Postorder traversals.
-✅ Save Iterations – Store and revisit previous states of the tree.
-✅ Zoom In & Out – Adjust the view for better visualization.
+ - ✅ Insert Nodes – Add new nodes to the BST dynamically.
+ - ✅ Delete Nodes – Remove nodes while maintaining BST properties.
+ - ✅ Rotate Nodes – Perform left and right rotations.
+ - ✅ Tree Traversals – Visualize Inorder, Preorder, and Postorder traversals.
+ - ✅ Save Iterations – Store and revisit previous states of the tree.
+ - ✅ Zoom In & Out – Adjust the view for better visualization.
 
 Whether you’re a student learning data structures or a developer needing a quick BST reference, this tool provides an intuitive way to interact with BSTs.
 
