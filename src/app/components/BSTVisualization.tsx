@@ -179,7 +179,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
     >
       <svg
         width={svgWidth}
-        height={svgHeight}
+        height="100%"
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
       >
         <g

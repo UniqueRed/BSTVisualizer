@@ -355,7 +355,9 @@ export default function BSTVisualizer() {
 
           <Accordion type="single" collapsible>
             <AccordionItem value="advanced">
-              <AccordionTrigger style={{ textDecoration: 'none' }}>Advanced Options</AccordionTrigger>
+              <AccordionTrigger style={{ textDecoration: "none" }}>
+                Advanced Options
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
@@ -371,7 +373,7 @@ export default function BSTVisualizer() {
                   <Button
                     onClick={handleClearAllIterations}
                     variant="destructive"
-                    className="w-full"
+                    className="w-full outline-none"
                   >
                     Clear All Iterations
                   </Button>
@@ -381,7 +383,11 @@ export default function BSTVisualizer() {
           </Accordion>
 
           <div className="flex justify-between">
-            <Button onClick={handleClear} variant="destructive">
+            <Button
+              onClick={handleClear}
+              variant="destructive"
+              className="outline-none"
+            >
               Clear
             </Button>
             <Button onClick={handleSaveIteration}>Save Iteration</Button>
@@ -411,6 +417,7 @@ export default function BSTVisualizer() {
             onClick={handleDeleteIteration}
             disabled={iterations.length === 0}
             variant="destructive"
+            className="outline-none"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
