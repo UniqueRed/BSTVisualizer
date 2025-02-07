@@ -8,6 +8,24 @@ import { Button } from "@/components/ui/button";
 interface BSTVisualizationProps {
   root: BSTNode | null;
   width: number;
+  highlightedNodes?: number[];
+  currentStep?: VisualizationStep;
+}
+
+interface VisualizationStep {
+  type:
+    | "comparison"
+    | "rotation"
+    | "insertion"
+    | "deletion"
+    | "traversal"
+    | "complete";
+  currentNode: number;
+  targetValue?: number;
+  description: string;
+  compareResult?: "left" | "right" | "equal";
+  highlightedNodes?: number[];
+  path?: number[];
 }
 
 interface NodePosition {
@@ -16,11 +34,16 @@ interface NodePosition {
   node: BSTNode;
 }
 
-const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
+const BSTVisualization: React.FC<BSTVisualizationProps> = ({
+  root,
+  width,
+  highlightedNodes = [],
+  currentStep,
+}) => {
   const nodeRadius = 20;
   const verticalSpacing = 60;
   const horizontalSpacing = 40;
-  const viewHeight = 450;
+  const viewHeight = 400;
   const containerRef = useRef<HTMLDivElement>(null);
 
   // State for panning and zooming
@@ -157,13 +180,12 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
         key={`${start.node.value}-${end.node.value}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        transition={{ duration: 0.5 }}
         x1={start.x}
         y1={start.y}
         x2={end.x}
         y2={end.y}
         stroke="black"
-        strokeWidth={2}
       />
     );
   };
@@ -180,7 +202,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
     >
       <svg
         width={svgWidth}
-        height="100%"
+        height={svgHeight}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
       >
         <g
@@ -199,14 +221,22 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
               )}
               <motion.circle
                 initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
+                animate={{
+                  scale: 1,
+                  fill: highlightedNodes.includes(position.node.value)
+                    ? "#e3f2fd"
+                    : "white",
+                  stroke: highlightedNodes.includes(position.node.value)
+                    ? "#2196f3"
+                    : "black",
+                  strokeWidth: highlightedNodes.includes(position.node.value)
+                    ? 2
+                    : 1,
+                }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 cx={position.x}
                 cy={position.y}
                 r={nodeRadius}
-                fill="white"
-                stroke="black"
-                strokeWidth={2}
               />
               <motion.text
                 initial={{ opacity: 0 }}
