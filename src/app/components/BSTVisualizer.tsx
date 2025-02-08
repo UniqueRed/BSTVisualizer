@@ -567,12 +567,56 @@ export default function BSTVisualizer() {
     }
   };
 
+  const handleClear = () => {
+    dispatch({ type: "CLEAR" });
+    setTraversalResult([]);
+  };
+
+  const handleSaveIteration = () => dispatch({ type: "SAVE_ITERATION" });
+  const handlePrevIteration = () =>
+    dispatch({ type: "LOAD_ITERATION", index: currentIndex - 1 });
+  const handleNextIteration = () =>
+    dispatch({ type: "LOAD_ITERATION", index: currentIndex + 1 });
+  const handleDeleteIteration = () =>
+    dispatch({ type: "DELETE_ITERATION", index: currentIndex });
+  const handleClearAllIterations = () =>
+    dispatch({ type: "CLEAR_ALL_ITERATIONS" });
+
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && currentIndex > 0) {
+        handlePrevIteration();
+      } else if (
+        e.key === "ArrowRight" &&
+        currentIndex < iterations.length - 1
+      ) {
+        handleNextIteration();
+      } else if (e.key === "Enter") {
+        if (insertValue) handleInsert();
+        else if (deleteValue) handleDelete();
+        else if (rotateParent && rotateChild) handleRotate();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    insertValue,
+    deleteValue,
+    rotateParent,
+    rotateChild,
+    currentIndex,
+    iterations,
+  ]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
@@ -744,6 +788,23 @@ export default function BSTVisualizer() {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          <div className="flex justify-between gap-1">
+            <Button
+              onClick={handleClear}
+              variant="destructive"
+              className="outline-none"
+            >
+              Clear
+            </Button>
+            <Button
+              onClick={handleClearAllIterations}
+              variant="destructive"
+              className="outline-none"
+            >
+              Clear Iterations
+            </Button>
+            <Button onClick={handleSaveIteration}>Save Iteration</Button>
+          </div>
         </div>
       </div>
 
