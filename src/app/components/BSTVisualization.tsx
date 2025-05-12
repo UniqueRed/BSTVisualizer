@@ -6,18 +6,19 @@ import type { RBTNode } from "@/app/lib/rbt";
 import { Color } from "@/app/lib/rbt";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import type { AVLNode } from "@/app/lib/avl";
 
 interface BSTVisualizationProps {
-  root: BSTNode | RBTNode | null;
+  root: BSTNode | RBTNode | AVLNode | null;
   width: number;
-  treeType: "bst" | "rbt";
+  treeType: "bst" | "rbt" | "avl";
   onNodeClick?: (value: number) => void;
 }
 
 interface NodePosition {
   x: number;
   y: number;
-  node: BSTNode | RBTNode;
+  node: BSTNode | RBTNode | AVLNode;
 }
 
 const BSTVisualization: React.FC<BSTVisualizationProps> = ({
@@ -72,7 +73,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
   const handleMouseUp = () => setIsDragging(false);
 
   const calculateTreeDimensions = (
-    node: BSTNode | RBTNode | null
+    node: BSTNode | RBTNode | AVLNode | null
   ): {
     width: number;
     height: number;
@@ -93,7 +94,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
   };
 
   const positionNodes = (
-    node: BSTNode | RBTNode | null,
+    node: BSTNode | RBTNode | AVLNode | null,
     x: number,
     y: number,
     availableWidth: number
@@ -158,7 +159,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
   const svgWidth = width;
   const svgHeight = viewHeight;
 
-  const getNodeColor = (node: BSTNode | RBTNode) => {
+  const getNodeColor = (node: BSTNode | RBTNode | AVLNode) => {
     if (treeType === "rbt") {
       const rbtNode = node as RBTNode;
       return rbtNode.color === Color.RED ? "#ef4444" : "#1f2937";
@@ -166,11 +167,28 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
     return "#ffffff";
   };
 
-  const getTextColor = (node: BSTNode | RBTNode) => {
+  const getTextColor = (node: BSTNode | RBTNode | AVLNode) => {
     if (treeType === "rbt") {
       return "white";
     }
     return "black";
+  };
+
+  const getNodeLabel = (node: BSTNode | RBTNode | AVLNode) => {
+    if (treeType === "avl") {
+      const avlNode = node as AVLNode;
+      const balance =
+        (avlNode.right ? avlNode.right.height : 0) -
+        (avlNode.left ? avlNode.left.height : 0);
+      return {
+        value: node.value.toString(),
+        balance: balance.toString(),
+      };
+    }
+    return {
+      value: node.value.toString(),
+      balance: null,
+    };
   };
 
   const renderEdge = (start: NodePosition, end: NodePosition | undefined) => {
@@ -245,8 +263,24 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({
                 className="select-none"
                 fill={getTextColor(position.node)}
               >
-                {position.node.value}
+                {getNodeLabel(position.node).value}
               </motion.text>
+              {treeType === "avl" && (
+                <motion.text
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  x={position.x + nodeRadius + 5}
+                  y={position.y}
+                  textAnchor="start"
+                  dominantBaseline="central"
+                  fontSize={nodeRadius * 0.7}
+                  className="select-none"
+                  fill="#666"
+                >
+                  {getNodeLabel(position.node).balance}
+                </motion.text>
+              )}
             </React.Fragment>
           ))}
         </g>

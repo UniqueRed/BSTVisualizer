@@ -31,15 +31,16 @@ import BSTVisualization from "./BSTVisualization";
 import { BST } from "@/app/lib/bst";
 import { RedBlackTree, Color } from "@/app/lib/rbt";
 import { motion, AnimatePresence } from "framer-motion";
+import { AVLTree } from "@/app/lib/avl";
 
-type TreeType = "bst" | "rbt";
+type TreeType = "bst" | "rbt" | "avl";
 
 type TreeAction =
   | { type: "INSERT"; value: number }
   | {
       type: "DELETE";
       value: number;
-      replacementType: "predecessor" | "successor";
+      replacementType?: "predecessor" | "successor";
     }
   | { type: "ROTATE"; parent: number; child: number }
   | { type: "CLEAR" }
@@ -51,8 +52,8 @@ type TreeAction =
   | { type: "FLIP_NODE_COLOR"; value: number };
 
 interface TreeState {
-  current: BST | RedBlackTree;
-  iterations: (BST | RedBlackTree)[];
+  current: BST | RedBlackTree | AVLTree;
+  iterations: (BST | RedBlackTree | AVLTree)[];
   currentIndex: number;
   treeType: TreeType;
 }
@@ -61,14 +62,16 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
   const newTree =
     state.treeType === "bst"
       ? new BST(JSON.parse(JSON.stringify(state.current.root)))
-      : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON());
+      : state.treeType === "rbt"
+      ? RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON())
+      : new AVLTree(JSON.parse(JSON.stringify(state.current.root)));
 
   switch (action.type) {
     case "INSERT":
       newTree.insert(action.value);
       return { ...state, current: newTree };
     case "DELETE":
-      newTree.delete(action.value, action.replacementType);
+      newTree.delete(action.value);
       return { ...state, current: newTree };
     case "ROTATE":
       if (state.treeType === "bst") {
@@ -78,7 +81,12 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
     case "CLEAR":
       return {
         ...state,
-        current: state.treeType === "bst" ? new BST() : new RedBlackTree(),
+        current:
+          state.treeType === "bst"
+            ? new BST()
+            : state.treeType === "rbt"
+            ? new RedBlackTree()
+            : new AVLTree(),
       };
     case "SAVE_ITERATION":
       return {
@@ -87,7 +95,9 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
           ...state.iterations,
           state.treeType === "bst"
             ? new BST(JSON.parse(JSON.stringify(state.current.root)))
-            : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON()),
+            : state.treeType === "rbt"
+            ? RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON())
+            : new AVLTree(JSON.parse(JSON.stringify(state.current.root))),
         ],
         currentIndex: state.iterations.length,
       };
@@ -102,8 +112,14 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
                     JSON.stringify(state.iterations[action.index].root)
                   )
                 )
-              : RedBlackTree.fromJSON(
+              : state.treeType === "rbt"
+              ? RedBlackTree.fromJSON(
                   (state.iterations[action.index] as RedBlackTree).toJSON()
+                )
+              : new AVLTree(
+                  JSON.parse(
+                    JSON.stringify(state.iterations[action.index].root)
+                  )
                 ),
           currentIndex: action.index,
         };
@@ -124,12 +140,18 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
                 ? new BST(
                     JSON.parse(JSON.stringify(newIterations[newIndex].root))
                   )
-                : RedBlackTree.fromJSON(
+                : state.treeType === "rbt"
+                ? RedBlackTree.fromJSON(
                     (newIterations[newIndex] as RedBlackTree).toJSON()
+                  )
+                : new AVLTree(
+                    JSON.parse(JSON.stringify(newIterations[newIndex].root))
                   )
               : state.treeType === "bst"
               ? new BST()
-              : new RedBlackTree(),
+              : state.treeType === "rbt"
+              ? new RedBlackTree()
+              : new AVLTree(),
         };
       }
       return state;
@@ -141,13 +163,20 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
         current:
           state.treeType === "bst"
             ? new BST(JSON.parse(JSON.stringify(state.current.root)))
-            : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON()),
+            : state.treeType === "rbt"
+            ? RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON())
+            : new AVLTree(JSON.parse(JSON.stringify(state.current.root))),
       };
     case "SET_TREE_TYPE":
       return {
         ...state,
         treeType: action.treeType,
-        current: action.treeType === "bst" ? new BST() : new RedBlackTree(),
+        current:
+          action.treeType === "bst"
+            ? new BST()
+            : action.treeType === "rbt"
+            ? new RedBlackTree()
+            : new AVLTree(),
         iterations: [],
         currentIndex: -1,
       };
@@ -184,15 +213,16 @@ export default function BSTVisualizer() {
   const [steps, setSteps] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [treeSnapshot, setTreeSnapshot] = useState<BST | RedBlackTree | null>(
-    null
-  );
+  const [treeSnapshot, setTreeSnapshot] = useState<
+    BST | RedBlackTree | AVLTree | null
+  >(null);
   const [insertValueSnapshot, setInsertValueSnapshot] = useState<number | null>(
     null
   );
   const [replacementType, setReplacementType] = useState<
     "predecessor" | "successor"
   >("successor");
+  const [balanceFactors, setBalanceFactors] = useState<number[]>([]);
 
   const handleInsert = () => {
     const value = Number(insertValue);
@@ -205,7 +235,9 @@ export default function BSTVisualizer() {
         setTreeSnapshot(
           treeType === "bst"
             ? new BST(JSON.parse(JSON.stringify(tree.root)))
-            : RedBlackTree.fromJSON((tree as RedBlackTree).toJSON())
+            : treeType === "rbt"
+            ? RedBlackTree.fromJSON((tree as RedBlackTree).toJSON())
+            : new AVLTree(JSON.parse(JSON.stringify(tree.root)))
         );
         setInsertValueSnapshot(value);
       } else {
@@ -221,7 +253,11 @@ export default function BSTVisualizer() {
   const handleDelete = () => {
     const value = Number(deleteValue);
     if (!isNaN(value)) {
-      dispatch({ type: "DELETE", value, replacementType });
+      if (treeType === "bst") {
+        dispatch({ type: "DELETE", value, replacementType });
+      } else {
+        dispatch({ type: "DELETE", value });
+      }
       if (autoSaveIterations) {
         setTimeout(() => dispatch({ type: "SAVE_ITERATION" }), 0);
       }
@@ -245,6 +281,7 @@ export default function BSTVisualizer() {
   const handleTraverse = () => {
     let result: number[] = [];
     let nodeColors: Color[] = [];
+    let balanceFactors: number[] = [];
 
     if (treeType === "rbt") {
       const traverseWithColors = (node: any) => {
@@ -281,6 +318,44 @@ export default function BSTVisualizer() {
         }
       };
       traverseWithColors(tree.root);
+    } else if (treeType === "avl") {
+      const traverseWithBalance = (node: any) => {
+        if (!node) return;
+        const getBalance = (n: any) => {
+          return (n.right ? n.right.height : 0) - (n.left ? n.left.height : 0);
+        };
+        switch (selectedTraversal) {
+          case "preorder":
+            result.push(node.value);
+            balanceFactors.push(getBalance(node));
+            traverseWithBalance(node.left);
+            traverseWithBalance(node.right);
+            break;
+          case "inorder":
+            traverseWithBalance(node.left);
+            result.push(node.value);
+            balanceFactors.push(getBalance(node));
+            traverseWithBalance(node.right);
+            break;
+          case "postorder":
+            traverseWithBalance(node.left);
+            traverseWithBalance(node.right);
+            result.push(node.value);
+            balanceFactors.push(getBalance(node));
+            break;
+          case "levelOrder":
+            const queue: any[] = [node];
+            while (queue.length > 0) {
+              const current = queue.shift()!;
+              result.push(current.value);
+              balanceFactors.push(getBalance(current));
+              if (current.left) queue.push(current.left);
+              if (current.right) queue.push(current.right);
+            }
+            break;
+        }
+      };
+      traverseWithBalance(tree.root);
     } else {
       switch (selectedTraversal) {
         case "preorder":
@@ -300,6 +375,7 @@ export default function BSTVisualizer() {
 
     setTraversalResult(result);
     setNodeColors(nodeColors);
+    setBalanceFactors(balanceFactors);
     setShowTraversal(true);
   };
 
@@ -317,6 +393,10 @@ export default function BSTVisualizer() {
             (value, idx) =>
               `${value}(${nodeColors[idx] === Color.RED ? "R" : "B"})`
           )
+          .join(", ");
+      } else if (treeType === "avl") {
+        text = traversalResult
+          .map((value, idx) => `${value}(${balanceFactors[idx]})`)
           .join(", ");
       } else {
         text = traversalResult.join(", ");
@@ -436,6 +516,8 @@ export default function BSTVisualizer() {
         dispatch({ type: "CLEAR" });
         if (treeType === "bst") {
           dispatch({ type: "INSERT", value: insertValueSnapshot });
+        } else if (treeType === "rbt") {
+          dispatch({ type: "INSERT", value: insertValueSnapshot });
         } else {
           dispatch({ type: "INSERT", value: insertValueSnapshot });
         }
@@ -449,6 +531,8 @@ export default function BSTVisualizer() {
       dispatch({ type: "SET_TREE_TYPE", treeType });
       dispatch({ type: "CLEAR" });
       if (treeType === "bst") {
+        dispatch({ type: "INSERT", value: insertValueSnapshot });
+      } else if (treeType === "rbt") {
         dispatch({ type: "INSERT", value: insertValueSnapshot });
       } else {
         dispatch({ type: "INSERT", value: insertValueSnapshot });
@@ -488,6 +572,7 @@ export default function BSTVisualizer() {
               <SelectContent>
                 <SelectItem value="bst">Binary Search Tree</SelectItem>
                 <SelectItem value="rbt">Red-Black Tree</SelectItem>
+                <SelectItem value="avl">AVL Tree</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -603,6 +688,11 @@ export default function BSTVisualizer() {
                         {treeType === "rbt" && (
                           <span className="text-sm">
                             ({nodeColors[index] === Color.RED ? "R" : "B"})
+                          </span>
+                        )}
+                        {treeType === "avl" && (
+                          <span className="text-sm">
+                            ({balanceFactors[index]})
                           </span>
                         )}
                         {index < traversalResult.length - 1 ? ", " : ""}
