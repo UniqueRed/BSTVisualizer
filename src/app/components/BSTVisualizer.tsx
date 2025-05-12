@@ -29,44 +29,65 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import BSTVisualization from "./BSTVisualization";
 import { BST } from "@/app/lib/bst";
+import { RedBlackTree, Color } from "@/app/lib/rbt";
 import { motion, AnimatePresence } from "framer-motion";
 
-type BSTAction =
+type TreeType = "bst" | "rbt";
+
+type TreeAction =
   | { type: "INSERT"; value: number }
-  | { type: "DELETE"; value: number }
+  | {
+      type: "DELETE";
+      value: number;
+      replacementType: "predecessor" | "successor";
+    }
   | { type: "ROTATE"; parent: number; child: number }
   | { type: "CLEAR" }
   | { type: "SAVE_ITERATION" }
   | { type: "LOAD_ITERATION"; index: number }
   | { type: "DELETE_ITERATION"; index: number }
-  | { type: "CLEAR_ALL_ITERATIONS" };
+  | { type: "CLEAR_ALL_ITERATIONS" }
+  | { type: "SET_TREE_TYPE"; treeType: TreeType }
+  | { type: "FLIP_NODE_COLOR"; value: number };
 
-interface BSTState {
-  current: BST;
-  iterations: BST[];
+interface TreeState {
+  current: BST | RedBlackTree;
+  iterations: (BST | RedBlackTree)[];
   currentIndex: number;
+  treeType: TreeType;
 }
 
-function bstReducer(state: BSTState, action: BSTAction): BSTState {
-  const newBST = new BST(JSON.parse(JSON.stringify(state.current.root)));
+function treeReducer(state: TreeState, action: TreeAction): TreeState {
+  const newTree =
+    state.treeType === "bst"
+      ? new BST(JSON.parse(JSON.stringify(state.current.root)))
+      : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON());
+
   switch (action.type) {
     case "INSERT":
-      newBST.insert(action.value);
-      return { ...state, current: newBST };
+      newTree.insert(action.value);
+      return { ...state, current: newTree };
     case "DELETE":
-      newBST.delete(action.value);
-      return { ...state, current: newBST };
+      newTree.delete(action.value, action.replacementType);
+      return { ...state, current: newTree };
     case "ROTATE":
-      newBST.rotate(action.parent, action.child);
-      return { ...state, current: newBST };
+      if (state.treeType === "bst") {
+        (newTree as BST).rotate(action.parent, action.child);
+      }
+      return { ...state, current: newTree };
     case "CLEAR":
-      return { ...state, current: new BST() };
+      return {
+        ...state,
+        current: state.treeType === "bst" ? new BST() : new RedBlackTree(),
+      };
     case "SAVE_ITERATION":
       return {
         ...state,
         iterations: [
           ...state.iterations,
-          new BST(JSON.parse(JSON.stringify(state.current.root))),
+          state.treeType === "bst"
+            ? new BST(JSON.parse(JSON.stringify(state.current.root)))
+            : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON()),
         ],
         currentIndex: state.iterations.length,
       };
@@ -74,9 +95,16 @@ function bstReducer(state: BSTState, action: BSTAction): BSTState {
       if (action.index >= 0 && action.index < state.iterations.length) {
         return {
           ...state,
-          current: new BST(
-            JSON.parse(JSON.stringify(state.iterations[action.index].root))
-          ),
+          current:
+            state.treeType === "bst"
+              ? new BST(
+                  JSON.parse(
+                    JSON.stringify(state.iterations[action.index].root)
+                  )
+                )
+              : RedBlackTree.fromJSON(
+                  (state.iterations[action.index] as RedBlackTree).toJSON()
+                ),
           currentIndex: action.index,
         };
       }
@@ -92,10 +120,16 @@ function bstReducer(state: BSTState, action: BSTAction): BSTState {
           currentIndex: newIndex,
           current:
             newIndex >= 0
-              ? new BST(
-                  JSON.parse(JSON.stringify(newIterations[newIndex].root))
-                )
-              : new BST(),
+              ? state.treeType === "bst"
+                ? new BST(
+                    JSON.parse(JSON.stringify(newIterations[newIndex].root))
+                  )
+                : RedBlackTree.fromJSON(
+                    (newIterations[newIndex] as RedBlackTree).toJSON()
+                  )
+              : state.treeType === "bst"
+              ? new BST()
+              : new RedBlackTree(),
         };
       }
       return state;
@@ -104,22 +138,37 @@ function bstReducer(state: BSTState, action: BSTAction): BSTState {
         ...state,
         iterations: [],
         currentIndex: -1,
-        current: new BST(JSON.parse(JSON.stringify(state.current.root))),
+        current:
+          state.treeType === "bst"
+            ? new BST(JSON.parse(JSON.stringify(state.current.root)))
+            : RedBlackTree.fromJSON((state.current as RedBlackTree).toJSON()),
       };
+    case "SET_TREE_TYPE":
+      return {
+        ...state,
+        treeType: action.treeType,
+        current: action.treeType === "bst" ? new BST() : new RedBlackTree(),
+        iterations: [],
+        currentIndex: -1,
+      };
+    case "FLIP_NODE_COLOR":
+      if (state.treeType === "rbt") {
+        (newTree as RedBlackTree).flipNodeColor(action.value);
+      }
+      return { ...state, current: newTree };
     default:
       return state;
   }
 }
 
 export default function BSTVisualizer() {
-  const [{ current: bst, iterations, currentIndex }, dispatch] = useReducer(
-    bstReducer,
-    {
+  const [{ current: tree, iterations, currentIndex, treeType }, dispatch] =
+    useReducer(treeReducer, {
       current: new BST(),
       iterations: [],
       currentIndex: -1,
-    }
-  );
+      treeType: "bst",
+    });
   const [insertValue, setInsertValue] = useState("");
   const [deleteValue, setDeleteValue] = useState("");
   const [rotateParent, setRotateParent] = useState("");
@@ -129,22 +178,50 @@ export default function BSTVisualizer() {
   const [showTraversal, setShowTraversal] = useState(false);
   const [copying, setCopying] = useState(false);
   const [autoSaveIterations, setAutoSaveIterations] = useState(false);
+  const [nodeColors, setNodeColors] = useState<Color[]>([]);
+  const [manualMode, setManualMode] = useState(false);
+  const [interactiveMode, setInteractiveMode] = useState(false);
+  const [steps, setSteps] = useState<any[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [treeSnapshot, setTreeSnapshot] = useState<BST | RedBlackTree | null>(
+    null
+  );
+  const [insertValueSnapshot, setInsertValueSnapshot] = useState<number | null>(
+    null
+  );
+  const [replacementType, setReplacementType] = useState<
+    "predecessor" | "successor"
+  >("successor");
 
   const handleInsert = () => {
     const value = Number(insertValue);
     if (!isNaN(value)) {
-      dispatch({ type: "INSERT", value });
-      if (autoSaveIterations) {
-        setTimeout(() => dispatch({ type: "SAVE_ITERATION" }), 0);
+      if (interactiveMode && treeType === "bst") {
+        const steps = BST.insertSteps(tree.root, value);
+        setSteps(steps);
+        setCurrentStep(0);
+        setIsPlaying(false);
+        setTreeSnapshot(
+          treeType === "bst"
+            ? new BST(JSON.parse(JSON.stringify(tree.root)))
+            : RedBlackTree.fromJSON((tree as RedBlackTree).toJSON())
+        );
+        setInsertValueSnapshot(value);
+      } else {
+        dispatch({ type: "INSERT", value });
+        if (autoSaveIterations) {
+          setTimeout(() => dispatch({ type: "SAVE_ITERATION" }), 0);
+        }
+        setInsertValue("");
       }
-      setInsertValue("");
     }
   };
 
   const handleDelete = () => {
     const value = Number(deleteValue);
     if (!isNaN(value)) {
-      dispatch({ type: "DELETE", value });
+      dispatch({ type: "DELETE", value, replacementType });
       if (autoSaveIterations) {
         setTimeout(() => dispatch({ type: "SAVE_ITERATION" }), 0);
       }
@@ -167,21 +244,62 @@ export default function BSTVisualizer() {
 
   const handleTraverse = () => {
     let result: number[] = [];
-    switch (selectedTraversal) {
-      case "preorder":
-        result = bst.preorder();
-        break;
-      case "inorder":
-        result = bst.inorder();
-        break;
-      case "postorder":
-        result = bst.postorder();
-        break;
-      case "levelOrder":
-        result = bst.levelOrder();
-        break;
+    let nodeColors: Color[] = [];
+
+    if (treeType === "rbt") {
+      const traverseWithColors = (node: any) => {
+        if (!node) return;
+        switch (selectedTraversal) {
+          case "preorder":
+            result.push(node.value);
+            nodeColors.push(node.color);
+            traverseWithColors(node.left);
+            traverseWithColors(node.right);
+            break;
+          case "inorder":
+            traverseWithColors(node.left);
+            result.push(node.value);
+            nodeColors.push(node.color);
+            traverseWithColors(node.right);
+            break;
+          case "postorder":
+            traverseWithColors(node.left);
+            traverseWithColors(node.right);
+            result.push(node.value);
+            nodeColors.push(node.color);
+            break;
+          case "levelOrder":
+            const queue: any[] = [node];
+            while (queue.length > 0) {
+              const current = queue.shift()!;
+              result.push(current.value);
+              nodeColors.push(current.color);
+              if (current.left) queue.push(current.left);
+              if (current.right) queue.push(current.right);
+            }
+            break;
+        }
+      };
+      traverseWithColors(tree.root);
+    } else {
+      switch (selectedTraversal) {
+        case "preorder":
+          result = tree.preorder();
+          break;
+        case "inorder":
+          result = tree.inorder();
+          break;
+        case "postorder":
+          result = tree.postorder();
+          break;
+        case "levelOrder":
+          result = tree.levelOrder();
+          break;
+      }
     }
+
     setTraversalResult(result);
+    setNodeColors(nodeColors);
     setShowTraversal(true);
   };
 
@@ -192,7 +310,18 @@ export default function BSTVisualizer() {
   const handleCopyResult = async () => {
     try {
       setCopying(true);
-      await navigator.clipboard.writeText(traversalResult.join(", "));
+      let text = "";
+      if (treeType === "rbt") {
+        text = traversalResult
+          .map(
+            (value, idx) =>
+              `${value}(${nodeColors[idx] === Color.RED ? "R" : "B"})`
+          )
+          .join(", ");
+      } else {
+        text = traversalResult.join(", ");
+      }
+      await navigator.clipboard.writeText(text);
     } catch (err) {
       console.error(err);
     } finally {
@@ -216,6 +345,20 @@ export default function BSTVisualizer() {
     dispatch({ type: "DELETE_ITERATION", index: currentIndex });
   const handleClearAllIterations = () =>
     dispatch({ type: "CLEAR_ALL_ITERATIONS" });
+
+  const handleTreeTypeChange = (newType: TreeType) => {
+    dispatch({ type: "SET_TREE_TYPE", treeType: newType });
+  };
+
+  const handleNodeClick = (value: number) => {
+    if (treeType === "rbt" && manualMode) {
+      dispatch({ type: "FLIP_NODE_COLOR", value });
+    }
+  };
+
+  const handleReplacementTypeChange = (value: "predecessor" | "successor") => {
+    setReplacementType(value);
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -265,12 +408,90 @@ export default function BSTVisualizer() {
     iterations,
   ]);
 
+  // Interactive mode controls
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (interactiveMode && isPlaying && steps.length > 0) {
+      interval = setInterval(() => {
+        setCurrentStep((prev) => {
+          if (prev < steps.length - 1) return prev + 1;
+          setIsPlaying(false);
+          return prev;
+        });
+      }, 1200);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [interactiveMode, isPlaying, steps]);
+
+  const handleNextStep = () => {
+    if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1);
+  };
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      if (currentStep === 1 && treeSnapshot && insertValueSnapshot !== null) {
+        dispatch({ type: "SET_TREE_TYPE", treeType });
+        dispatch({ type: "CLEAR" });
+        if (treeType === "bst") {
+          dispatch({ type: "INSERT", value: insertValueSnapshot });
+        } else {
+          dispatch({ type: "INSERT", value: insertValueSnapshot });
+        }
+      }
+    }
+  };
+  const handlePlayPause = () => setIsPlaying((p) => !p);
+  const handleRestart = () => {
+    setCurrentStep(0);
+    if (treeSnapshot && insertValueSnapshot !== null) {
+      dispatch({ type: "SET_TREE_TYPE", treeType });
+      dispatch({ type: "CLEAR" });
+      if (treeType === "bst") {
+        dispatch({ type: "INSERT", value: insertValueSnapshot });
+      } else {
+        dispatch({ type: "INSERT", value: insertValueSnapshot });
+      }
+    }
+  };
+
+  // When interactive mode steps are completed, perform the insert
+  useEffect(() => {
+    if (
+      interactiveMode &&
+      steps.length > 0 &&
+      currentStep === steps.length - 1 &&
+      steps[currentStep].action === "insert"
+    ) {
+      const value = Number(insertValue);
+      dispatch({ type: "INSERT", value });
+      if (autoSaveIterations) {
+        setTimeout(() => dispatch({ type: "SAVE_ITERATION" }), 0);
+      }
+      setInsertValue("");
+    }
+  }, [interactiveMode, steps, currentStep]);
+
   return (
     <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 h-full rounded-lg">
       <div className="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md space-y-6">
-        <h2 className="text-xl font-semibold text-gray-700">BST Controls</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Tree Controls</h2>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tree Type</Label>
+            <Select value={treeType} onValueChange={handleTreeTypeChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select tree type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bst">Binary Search Tree</SelectItem>
+                <SelectItem value="rbt">Red-Black Tree</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label>Insert Node</Label>
             <div className="flex space-x-2">
@@ -299,25 +520,43 @@ export default function BSTVisualizer() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Rotate Nodes</Label>
-            <div className="flex space-x-2">
-              <Input
-                type="number"
-                value={rotateParent}
-                onChange={(e) => setRotateParent(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRotate()}
-                placeholder="Parent"
-              />
-              <Input
-                type="number"
-                value={rotateChild}
-                onChange={(e) => setRotateChild(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRotate()}
-                placeholder="Child"
-              />
-              <Button onClick={handleRotate}>Rotate</Button>
+          {treeType === "bst" && (
+            <div className="space-y-2">
+              <Label>Rotate Nodes</Label>
+              <div className="flex space-x-2">
+                <Input
+                  type="number"
+                  value={rotateParent}
+                  onChange={(e) => setRotateParent(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRotate()}
+                  placeholder="Parent"
+                />
+                <Input
+                  type="number"
+                  value={rotateChild}
+                  onChange={(e) => setRotateChild(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRotate()}
+                  placeholder="Child"
+                />
+                <Button onClick={handleRotate}>Rotate</Button>
+              </div>
             </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Replacement Type</Label>
+            <Select
+              value={replacementType}
+              onValueChange={handleReplacementTypeChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select replacement type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="predecessor">Predecessor</SelectItem>
+                <SelectItem value="successor">Successor</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -339,7 +578,7 @@ export default function BSTVisualizer() {
               </Select>
               <Button
                 onClick={handleTraverse}
-                disabled={!selectedTraversal || !bst.root}
+                disabled={!selectedTraversal || !tree.root}
               >
                 Traverse
               </Button>
@@ -357,7 +596,19 @@ export default function BSTVisualizer() {
                 <Alert className="relative">
                   <AlertDescription className="pr-16">
                     Traversal Result:
-                    <br />[{traversalResult.join(", ")}]
+                    <br />[
+                    {traversalResult.map((value, index) => (
+                      <span key={index}>
+                        {value}
+                        {treeType === "rbt" && (
+                          <span className="text-sm">
+                            ({nodeColors[index] === Color.RED ? "R" : "B"})
+                          </span>
+                        )}
+                        {index < traversalResult.length - 1 ? ", " : ""}
+                      </span>
+                    ))}
+                    ]
                   </AlertDescription>
                   <div className="absolute top-2 right-2 flex justify-end items-center space-x-2">
                     <Button
@@ -428,7 +679,12 @@ export default function BSTVisualizer() {
 
       <div className="flex flex-col flex-grow bg-white p-6 rounded-lg shadow-md">
         <div ref={containerRef} className="flex-grow">
-          <BSTVisualization root={bst.root} width={containerWidth} />
+          <BSTVisualization
+            root={tree.root}
+            width={containerWidth}
+            treeType={treeType}
+            onNodeClick={handleNodeClick}
+          />
         </div>
 
         <div className="flex justify-center items-center mt-4 space-x-4">
@@ -453,6 +709,29 @@ export default function BSTVisualizer() {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+
+        {interactiveMode && steps.length > 0 && (
+          <div className="flex flex-col items-center mt-4">
+            <div className="mb-2 text-center text-blue-700 font-medium">
+              {steps[currentStep]?.explanation}
+            </div>
+            <div className="flex space-x-2">
+              <Button onClick={handlePrevStep} disabled={currentStep === 0}>
+                Prev
+              </Button>
+              <Button onClick={handlePlayPause}>
+                {isPlaying ? "Pause" : "Play"}
+              </Button>
+              <Button
+                onClick={handleNextStep}
+                disabled={currentStep === steps.length - 1}
+              >
+                Next
+              </Button>
+              <Button onClick={handleRestart}>Restart</Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

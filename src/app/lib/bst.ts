@@ -45,24 +45,41 @@ export class BST {
     }
   }
 
-  delete(value: number) {
-    this.root = this._deleteNode(this.root, value);
+  delete(
+    value: number,
+    replacementType: "predecessor" | "successor" = "successor"
+  ) {
+    this.root = this._deleteNode(this.root, value, replacementType);
   }
 
-  private _deleteNode(node: BSTNode | null, value: number): BSTNode | null {
+  private _deleteNode(
+    node: BSTNode | null,
+    value: number,
+    replacementType: "predecessor" | "successor"
+  ): BSTNode | null {
     if (node === null) return null;
 
     if (value < node.value) {
-      node.left = this._deleteNode(node.left, value);
+      node.left = this._deleteNode(node.left, value, replacementType);
     } else if (value > node.value) {
-      node.right = this._deleteNode(node.right, value);
+      node.right = this._deleteNode(node.right, value, replacementType);
     } else {
       if (node.left === null) return node.right;
       if (node.right === null) return node.left;
 
-      const minRight = this._findMin(node.right);
-      node.value = minRight.value;
-      node.right = this._deleteNode(node.right, minRight.value);
+      if (replacementType === "successor") {
+        const minRight = this._findMin(node.right);
+        node.value = minRight.value;
+        node.right = this._deleteNode(
+          node.right,
+          minRight.value,
+          replacementType
+        );
+      } else {
+        const maxLeft = this._findMax(node.left);
+        node.value = maxLeft.value;
+        node.left = this._deleteNode(node.left, maxLeft.value, replacementType);
+      }
     }
     return node;
   }
@@ -70,6 +87,13 @@ export class BST {
   private _findMin(node: BSTNode): BSTNode {
     while (node.left !== null) {
       node = node.left;
+    }
+    return node;
+  }
+
+  private _findMax(node: BSTNode): BSTNode {
+    while (node.right !== null) {
+      node = node.right;
     }
     return node;
   }
@@ -198,5 +222,49 @@ export class BST {
     }
 
     return result;
+  }
+
+  static insertSteps(root: BSTNode | null, value: number) {
+    const steps = [];
+    let current = root;
+    let parent = null;
+    while (current) {
+      steps.push({
+        node: current.value,
+        action: "compare",
+        explanation: `Comparing ${value} with ${current.value}`,
+      });
+      parent = current;
+      if (value === current.value) {
+        steps.push({
+          node: current.value,
+          action: "duplicate",
+          explanation: `Value ${value} already exists. No insertion.`,
+        });
+        return steps;
+      } else if (value < current.value) {
+        steps.push({
+          node: current.value,
+          action: "go-left",
+          explanation: `${value} < ${current.value}: go left.`,
+        });
+        current = current.left;
+      } else {
+        steps.push({
+          node: current.value,
+          action: "go-right",
+          explanation: `${value} > ${current.value}: go right.`,
+        });
+        current = current.right;
+      }
+    }
+    steps.push({
+      node: parent ? parent.value : null,
+      action: "insert",
+      explanation: `Insert ${value} as ${
+        parent ? (value < parent.value ? "left" : "right") : "root"
+      } child.`,
+    });
+    return steps;
   }
 }

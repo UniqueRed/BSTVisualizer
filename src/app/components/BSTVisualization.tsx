@@ -2,21 +2,30 @@
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import type { BSTNode } from "@/app/lib/bst";
+import type { RBTNode } from "@/app/lib/rbt";
+import { Color } from "@/app/lib/rbt";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 interface BSTVisualizationProps {
-  root: BSTNode | null;
+  root: BSTNode | RBTNode | null;
   width: number;
+  treeType: "bst" | "rbt";
+  onNodeClick?: (value: number) => void;
 }
 
 interface NodePosition {
   x: number;
   y: number;
-  node: BSTNode;
+  node: BSTNode | RBTNode;
 }
 
-const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
+const BSTVisualization: React.FC<BSTVisualizationProps> = ({
+  root,
+  width,
+  treeType,
+  onNodeClick,
+}) => {
   const nodeRadius = 20;
   const verticalSpacing = 60;
   const horizontalSpacing = 40;
@@ -63,7 +72,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
   const handleMouseUp = () => setIsDragging(false);
 
   const calculateTreeDimensions = (
-    node: BSTNode | null
+    node: BSTNode | RBTNode | null
   ): {
     width: number;
     height: number;
@@ -84,7 +93,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
   };
 
   const positionNodes = (
-    node: BSTNode | null,
+    node: BSTNode | RBTNode | null,
     x: number,
     y: number,
     availableWidth: number
@@ -149,6 +158,21 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
   const svgWidth = width;
   const svgHeight = viewHeight;
 
+  const getNodeColor = (node: BSTNode | RBTNode) => {
+    if (treeType === "rbt") {
+      const rbtNode = node as RBTNode;
+      return rbtNode.color === Color.RED ? "#ef4444" : "#1f2937";
+    }
+    return "#ffffff";
+  };
+
+  const getTextColor = (node: BSTNode | RBTNode) => {
+    if (treeType === "rbt") {
+      return "white";
+    }
+    return "black";
+  };
+
   const renderEdge = (start: NodePosition, end: NodePosition | undefined) => {
     if (!end) return null;
     return (
@@ -203,9 +227,11 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
                 cx={position.x}
                 cy={position.y}
                 r={nodeRadius}
-                fill="white"
+                fill={getNodeColor(position.node)}
                 stroke="black"
                 strokeWidth={2}
+                style={{ cursor: onNodeClick ? "pointer" : "default" }}
+                onClick={() => onNodeClick?.(position.node.value)}
               />
               <motion.text
                 initial={{ opacity: 0 }}
@@ -217,6 +243,7 @@ const BSTVisualization: React.FC<BSTVisualizationProps> = ({ root, width }) => {
                 dominantBaseline="central"
                 fontSize={nodeRadius}
                 className="select-none"
+                fill={getTextColor(position.node)}
               >
                 {position.node.value}
               </motion.text>
