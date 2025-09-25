@@ -558,15 +558,20 @@ export default function BSTVisualizer() {
   }, [interactiveMode, steps, currentStep]);
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 h-full rounded-lg">
-      <div className="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md space-y-6">
-        <h2 className="text-xl font-semibold text-gray-700">Tree Controls</h2>
+    <div className="flex flex-col md:flex-row gap-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100 h-full rounded-lg">
+      <div className="w-full md:w-1/3 bg-white/90 backdrop-blur-sm p-6 rounded-xl shadow-sm space-y-6 transition-all duration-300 hover:shadow-md">
+        <h2 className="text-2xl font-semibold text-slate-800">Tree Visualizer</h2>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tree Type</Label>
+        <div className="space-y-6">
+          <motion.div
+            className="space-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Label className="text-slate-700 font-medium">Tree Type</Label>
             <Select value={treeType} onValueChange={handleTreeTypeChange}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white hover:bg-slate-50 transition-colors">
                 <SelectValue placeholder="Select tree type" />
               </SelectTrigger>
               <SelectContent>
@@ -575,10 +580,15 @@ export default function BSTVisualizer() {
                 <SelectItem value="avl">AVL Tree</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label>Insert Node</Label>
+          <motion.div
+            className="space-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Label className="text-slate-700 font-medium">Insert Node</Label>
             <div className="flex space-x-2">
               <Input
                 type="number"
@@ -586,13 +596,24 @@ export default function BSTVisualizer() {
                 onChange={(e) => setInsertValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleInsert()}
                 placeholder="Enter value"
+                className="bg-white hover:bg-slate-50 transition-colors"
               />
-              <Button onClick={handleInsert}>Insert</Button>
+              <Button
+                onClick={handleInsert}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                Insert
+              </Button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label>Delete Node</Label>
+          <motion.div
+            className="space-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Label className="text-slate-700 font-medium">Delete Node</Label>
             <div className="flex space-x-2">
               <Input
                 type="number"
@@ -600,14 +621,25 @@ export default function BSTVisualizer() {
                 onChange={(e) => setDeleteValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleDelete()}
                 placeholder="Enter value"
+                className="bg-white hover:bg-slate-50 transition-colors"
               />
-              <Button onClick={handleDelete}>Delete</Button>
+              <Button
+                onClick={handleDelete}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                Delete
+              </Button>
             </div>
-          </div>
+          </motion.div>
 
           {treeType === "bst" && (
-            <div className="space-y-2">
-              <Label>Rotate Nodes</Label>
+            <motion.div
+              className="space-y-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+            >
+              <Label className="text-slate-700 font-medium">Rotate Nodes</Label>
               <div className="flex space-x-2">
                 <Input
                   type="number"
@@ -615,6 +647,7 @@ export default function BSTVisualizer() {
                   onChange={(e) => setRotateParent(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRotate()}
                   placeholder="Parent"
+                  className="bg-white hover:bg-slate-50 transition-colors"
                 />
                 <Input
                   type="number"
@@ -622,19 +655,32 @@ export default function BSTVisualizer() {
                   onChange={(e) => setRotateChild(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRotate()}
                   placeholder="Child"
+                  className="bg-white hover:bg-slate-50 transition-colors"
                 />
-                <Button onClick={handleRotate}>Rotate</Button>
+                <Button
+                  onClick={handleRotate}
+                  className="bg-slate-800 hover:bg-slate-700 transition-colors"
+                >
+                  Rotate
+                </Button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          <div className="space-y-2">
-            <Label>Replacement Type</Label>
+          <motion.div
+            className="space-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+          >
+            <Label className="text-slate-700 font-medium">
+              Replacement Type
+            </Label>
             <Select
               value={replacementType}
               onValueChange={handleReplacementTypeChange}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-white hover:bg-slate-50 transition-colors">
                 <SelectValue placeholder="Select replacement type" />
               </SelectTrigger>
               <SelectContent>
@@ -642,16 +688,21 @@ export default function BSTVisualizer() {
                 <SelectItem value="successor">Successor</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label>Tree Traversal</Label>
+          <motion.div
+            className="space-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          >
+            <Label className="text-slate-700 font-medium">Tree Traversal</Label>
             <div className="flex space-x-2">
               <Select
                 value={selectedTraversal}
                 onValueChange={setSelectedTraversal}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full bg-white hover:bg-slate-50 transition-colors">
                   <SelectValue placeholder="Select traversal method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -664,11 +715,12 @@ export default function BSTVisualizer() {
               <Button
                 onClick={handleTraverse}
                 disabled={!selectedTraversal || !tree.root}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 Traverse
               </Button>
             </div>
-          </div>
+          </motion.div>
 
           <AnimatePresence>
             {showTraversal && (
@@ -678,12 +730,12 @@ export default function BSTVisualizer() {
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                <Alert className="relative">
-                  <AlertDescription className="pr-16">
+                <Alert className="relative bg-white/90 backdrop-blur-sm border-slate-200">
+                  <AlertDescription className="pr-16 text-slate-700">
                     Traversal Result:
                     <br />[
                     {traversalResult.map((value, index) => (
-                      <span key={index}>
+                      <span key={index} className="font-mono">
                         {value}
                         {treeType === "rbt" && (
                           <span className="text-sm">
@@ -705,19 +757,21 @@ export default function BSTVisualizer() {
                       size="icon"
                       variant="ghost"
                       onClick={handleCopyResult}
+                      className="hover:bg-slate-100 transition-colors"
                     >
                       {copying ? (
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 text-slate-600" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 text-slate-600" />
                       )}
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={handleCloseTraversal}
+                      className="hover:bg-slate-100 transition-colors"
                     >
-                      <XIcon className="h-4 w-4" />
+                      <XIcon className="h-4 w-4 text-slate-600" />
                     </Button>
                   </div>
                 </Alert>
@@ -725,49 +779,68 @@ export default function BSTVisualizer() {
             )}
           </AnimatePresence>
 
-          <Accordion type="single" collapsible>
-            <AccordionItem value="advanced">
-              <AccordionTrigger style={{ textDecoration: "none" }}>
-                Advanced Options
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="autoSave"
-                      checked={autoSaveIterations}
-                      onCheckedChange={(checked) =>
-                        setAutoSaveIterations(checked === true)
-                      }
-                    />
-                    <Label htmlFor="autoSave">Autosave Iterations</Label>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
+          >
+            <Accordion type="single" collapsible>
+              <AccordionItem value="advanced">
+                <AccordionTrigger className="text-slate-700 hover:text-slate-900 transition-colors">
+                  Advanced Options
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="autoSave"
+                        checked={autoSaveIterations}
+                        onCheckedChange={(checked) =>
+                          setAutoSaveIterations(checked === true)
+                        }
+                        className="border-slate-300"
+                      />
+                      <Label htmlFor="autoSave" className="text-slate-700">
+                        Autosave Iterations
+                      </Label>
+                    </div>
                   </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </motion.div>
 
-          <div className="flex justify-between gap-1">
+          <motion.div
+            className="flex justify-between gap-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+          >
             <Button
               onClick={handleClear}
               variant="destructive"
-              className="outline-none"
+              className="bg-slate-800 hover:bg-slate-700 transition-colors"
             >
               Clear
             </Button>
             <Button
               onClick={handleClearAllIterations}
               variant="destructive"
-              className="outline-none"
+              className="bg-slate-800 hover:bg-slate-700 transition-colors"
             >
               Clear Iterations
             </Button>
-            <Button onClick={handleSaveIteration}>Save Iteration</Button>
-          </div>
+            <Button
+              onClick={handleSaveIteration}
+              className="bg-slate-800 hover:bg-slate-700 transition-colors"
+            >
+              Save Iteration
+            </Button>
+          </motion.div>
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow bg-white p-6 rounded-lg shadow-md">
+      <div className="flex flex-col flex-grow bg-white/90 backdrop-blur-sm p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md">
         <div ref={containerRef} className="flex-grow">
           <BSTVisualization
             root={tree.root}
@@ -777,16 +850,26 @@ export default function BSTVisualizer() {
           />
         </div>
 
-        <div className="flex justify-center items-center mt-4 space-x-4">
-          <Button onClick={handlePrevIteration} disabled={currentIndex <= 0}>
+        <motion.div
+          className="flex justify-center items-center mt-4 space-x-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            onClick={handlePrevIteration}
+            disabled={currentIndex <= 0}
+            className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-gray-700 font-medium">
+          <span className="text-slate-700 font-medium">
             Iteration {currentIndex + 1} of {iterations.length}
           </span>
           <Button
             onClick={handleNextIteration}
             disabled={currentIndex >= iterations.length - 1}
+            className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -794,33 +877,51 @@ export default function BSTVisualizer() {
             onClick={handleDeleteIteration}
             disabled={iterations.length === 0}
             variant="destructive"
-            className="outline-none"
+            className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-        </div>
+        </motion.div>
 
         {interactiveMode && steps.length > 0 && (
-          <div className="flex flex-col items-center mt-4">
-            <div className="mb-2 text-center text-blue-700 font-medium">
+          <motion.div
+            className="flex flex-col items-center mt-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="mb-2 text-center text-slate-700 font-medium">
               {steps[currentStep]?.explanation}
             </div>
             <div className="flex space-x-2">
-              <Button onClick={handlePrevStep} disabled={currentStep === 0}>
+              <Button
+                onClick={handlePrevStep}
+                disabled={currentStep === 0}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
                 Prev
               </Button>
-              <Button onClick={handlePlayPause}>
+              <Button
+                onClick={handlePlayPause}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
                 {isPlaying ? "Pause" : "Play"}
               </Button>
               <Button
                 onClick={handleNextStep}
                 disabled={currentStep === steps.length - 1}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 Next
               </Button>
-              <Button onClick={handleRestart}>Restart</Button>
+              <Button
+                onClick={handleRestart}
+                className="bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                Restart
+              </Button>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
